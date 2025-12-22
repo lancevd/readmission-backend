@@ -1,0 +1,67 @@
+{
+  "features": {
+    "numeric": [
+      "time_in_hospital",
+      "num_lab_procedures",
+      "num_medications",
+      "num_procedures",
+      "number_inpatient",
+      "number_outpatient",
+      "number_emergency",
+      "number_diagnoses"
+    ],
+    "categorical": [
+      "age",
+      "gender"
+    ]
+  },
+  "medians": {
+    "time_in_hospital": 4,
+    "num_lab_procedures": 44,
+    "num_medications": 15,
+    "num_procedures": 1,
+    "number_inpatient": 0,
+    "number_outpatient": 0,
+    "number_emergency": 0,
+    "number_diagnoses": 8
+  },
+  "means": {
+    "time_in_hospital": 4.395986871843248,
+    "num_lab_procedures": 43.09564098028811,
+    "num_medications": 16.021844230882614,
+    "num_procedures": 1.339730361810428,
+    "number_inpatient": 0.635565906098304,
+    "number_outpatient": 0.36935715268360747,
+    "number_emergency": 0.19783621248747127,
+    "number_diagnoses": 7.422606764538254
+  },
+  "stds": {
+    "time_in_hospital": 2.985093100906584,
+    "num_lab_procedures": 19.674265584192668,
+    "num_medications": 8.12752627644711,
+    "num_procedures": 1.7057985980743973,
+    "number_inpatient": 1.2628570853411878,
+    "number_outpatient": 1.2672588701494132,
+    "number_emergency": 0.9304676967846568,
+    "number_diagnoses": 1.9335906447477769
+  },
+  "encodings": {
+    "age": {
+      "[0-10)": 0,
+      "[10-20)": 1,
+      "[20-30)": 2,
+      "[30-40)": 3,
+      "[40-50)": 4,
+      "[50-60)": 5,
+      "[60-70)": 6,
+      "[70-80)": 7,
+      "[80-90)": 8,
+      "[90-100)": 9
+    },
+    "gender": {
+      "Female": 0,
+      "Male": 1,
+      "Unknown/Invalid": 2
+    }
+  }
+}

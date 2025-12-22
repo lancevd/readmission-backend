@@ -8,9 +8,10 @@ node_modules/
 .env.test.local
 .env.production.local
 
-# Model files
-models/
-backend/models/
+# Model files - IMPORTANT: Do NOT ignore models/ folder for deployment!
+# The trained model files are small (~8KB) and MUST be deployed
+# models/          ← COMMENTED OUT - We need models/ in deployment!
+# backend/models/  ← No longer needed (flattened structure)
 
 # Logs
 *.log

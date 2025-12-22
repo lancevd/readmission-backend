@@ -1,0 +1,126 @@
+{
+  "version": "1.0.0",
+  "name": "readmission-predictor-baseline",
+  "description": "Baseline neural network for predicting 30-day hospital readmission risk",
+  "createdDate": "2025-12-16",
+  "lastUpdated": "2025-12-16",
+  "dataset": {
+    "name": "UCI Diabetes 130-US Hospitals",
+    "source": "UCI Machine Learning Repository",
+    "years": "1999-2008",
+    "totalSamples": 101766,
+    "trainSamples": 71236,
+    "valSamples": 15264,
+    "testSamples": 15266
+  },
+  "model": {
+    "architecture": "Sequential Neural Network",
+    "framework": "TensorFlow.js",
+    "version": "4.22.0",
+    "backend": "CPU",
+    "totalParameters": 897,
+    "trainableParameters": 897,
+    "layers": [
+      {
+        "type": "Dense",
+        "units": 32,
+        "activation": "relu",
+        "inputShape": [
+          10
+        ]
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.3
+      },
+      {
+        "type": "Dense",
+        "units": 16,
+        "activation": "relu"
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.2
+      },
+      {
+        "type": "Dense",
+        "units": 1,
+        "activation": "sigmoid"
+      }
+    ]
+  },
+  "training": {
+    "optimizer": "adam",
+    "learningRate": 0.001,
+    "lossFunction": "binaryCrossentropy",
+    "epochs": 20,
+    "batchSize": 256,
+    "classWeights": {
+      "0": 0.5636,
+      "1": 4.4295
+    }
+  },
+  "features": {
+    "count": 10,
+    "numeric": [
+      "time_in_hospital",
+      "num_lab_procedures",
+      "num_medications",
+      "num_procedures",
+      "number_inpatient",
+      "number_outpatient",
+      "number_emergency",
+      "number_diagnoses"
+    ],
+    "categorical": [
+      "age",
+      "gender"
+    ]
+  },
+  "performance": {
+    "testAccuracy": 0.6205,
+    "testPrecision": 0.1568,
+    "testRecall": 0.5687,
+    "testF1Score": 0.2458,
+    "testSpecificity": 0.6268,
+    "rocAuc": 0.6451,
+    "optimalThreshold": 0.55
+  },
+  "preprocessing": {
+    "missingValueStrategy": {
+      "numeric": "median imputation",
+      "categorical": "unknown category"
+    },
+    "encoding": {
+      "categorical": "label encoding"
+    },
+    "normalization": {
+      "numeric": "z-score (mean=0, std=1)"
+    }
+  },
+  "files": {
+    "model": "model.json",
+    "weights": "weights.bin",
+    "preprocessing": "../preprocess.json",
+    "documentation": "../../docs/model.md"
+  },
+  "usage": {
+    "inputShape": [
+      10
+    ],
+    "outputShape": [
+      1
+    ],
+    "outputType": "probability",
+    "threshold": {
+      "default": 0.5,
+      "optimal": 0.55
+    }
+  },
+  "warnings": [
+    "This model is a research prototype and NOT approved for clinical use",
+    "Predictions should supplement, not replace, clinical judgment",
+    "Model should be validated on local data before deployment",
+    "Trained on US hospital data (1999-2008) - may not generalize to other populations"
+  ]
+}
