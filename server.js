@@ -254,6 +254,136 @@ function createApp() {
 
       // Make prediction
       const predictions = model.predict(inputTensor);
+      const rawProbability = predictions.dataSync()[0];
+
+      // Clean up tensors
+      inputTensor.dispose();
+      predictions.dispose();
+
+      // Get patient age (encoded value)
+      const patientAge = processedData[0].age;
+
+      // Import improvement functions
+      const {
+        getAgeSpecificThreshold,
+        applyRuleBasedAdjustments,
+        getConfidenceBasedPrediction
+      } = await import('./improve-model.js');
+
+      // Apply rule-based adjustments
+      const { adjustedProbability, adjustment } = applyRuleBasedAdjustments(rawProbability, patientData);
+
+      // Get age-specific threshold
+      const threshold = getAgeSpecificThreshold(patientAge);
+
+      // Determine risk level with age-specific threshold
+      let riskLevel;
+      let riskCategory;
+      if (adjustedProbability >= threshold) {
+        riskLevel = 'high';
+        riskCategory = 'High Risk';
+      } else if (adjustedProbability >= threshold - 0.2) {
+        riskLevel = 'medium';
+        riskCategory = 'Medium Risk';
+      } else {
+        riskLevel = 'low';
+        riskCategory = 'Low Risk';
+      }
+
+      // Get confidence assessment
+      const confidenceInfo = getConfidenceBasedPrediction(adjustedProbability, patientAge);
+
+      // Log prediction (without patient data for privacy)
+      console.log(`[PREDICTION] Risk: ${riskLevel}, Probability: ${(adjustedProbability * 100).toFixed(2)}%, Confidence: ${confidenceInfo.confidence}, Review: ${confidenceInfo.requiresReview}`);
+
+      // Return prediction with improved information
+      res.json({
+        success: true,
+        prediction: {
+          probability: parseFloat(adjustedProbability.toFixed(4)),
+          probabilityPercent: parseFloat((adjustedProbability * 100).toFixed(2)),
+          rawProbability: parseFloat(rawProbability.toFixed(4)),
+          riskLevel,
+          riskCategory,
+          threshold,
+          confidence: confidenceInfo.confidence,
+          requiresReview: confidenceInfo.requiresReview
+        },
+        improvements: {
+          ageSpecificThreshold: true,
+          ruleBasedAdjustments: true,
+          adjustmentMade: parseFloat(adjustment.toFixed(4))
+        },
+        metadata: {
+          modelVersion: modelMetadata?.version || 'unknown',
+          timestamp: new Date().toISOString(),
+          fairnessImprovements: 'v1.1 - Age-specific thresholds and confidence-based flagging'
+        },
+        disclaimer: 'This prediction is for research purposes only and should not be used for clinical decision-making.'
+      });
+
+    } catch (error) {
+      console.error('[PREDICTION ERROR]', error.message);
+      next(error);
+    }
+  });
+
+  // Explanation endpoint - provides feature importance and human-readable explanation
+  app.post('/api/explain', async (req, res, next) => {
+    try {
+      // Check if model is loaded
+      if (!model || !preprocessMetadata) {
+        return res.status(503).json({
+          error: 'Model not available',
+          message: 'The prediction model is not loaded. Please try again later.'
+        });
+      }
+
+      // Validate request body
+      const patientData = req.body;
+
+      // Required fields
+      const requiredFields = [
+        'time_in_hospital',
+        'num_lab_procedures',
+        'num_medications',
+        'num_procedures',
+        'number_inpatient',
+        'number_outpatient',
+        'number_emergency',
+        'number_diagnoses',
+        'age',
+        'gender'
+      ];
+
+      // Check for missing fields
+      const missingFields = requiredFields.filter(field => !(field in patientData));
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          error: 'Missing required fields',
+          missingFields
+        });
+      }
+
+      // Import preprocessing and explainability modules
+      const { preprocessData, extractFeaturesAndLabels } = await import('./preprocess.js');
+      const { calculateFeatureImportance, generateExplanation, getFeatureDisplayName } = await import('./explainability.js');
+
+      // Prepare patient data for preprocessing
+      const patientArray = [{
+        ...patientData,
+        readmitted: 'NO' // Placeholder
+      }];
+
+      // Preprocess data
+      const { data: processedData } = preprocessData(patientArray, preprocessMetadata);
+      const { features } = extractFeaturesAndLabels(processedData);
+
+      // Convert to tensor
+      const inputTensor = tf.tensor2d(features);
+
+      // Make prediction
+      const predictions = model.predict(inputTensor);
       const probability = predictions.dataSync()[0];
 
       // Determine risk level
@@ -274,10 +404,35 @@ function createApp() {
       inputTensor.dispose();
       predictions.dispose();
 
-      // Log prediction (without patient data for privacy)
-      console.log(`[PREDICTION] Risk: ${riskLevel}, Probability: ${(probability * 100).toFixed(2)}%`);
+      // Calculate feature importance
+      const featureImportance = await calculateFeatureImportance(
+        model,
+        patientData,
+        preprocessMetadata,
+        { preprocessData, extractFeaturesAndLabels }
+      );
 
-      // Return prediction
+      // Generate human-readable explanation
+      const explanation = generateExplanation(
+        patientData,
+        { probability, riskLevel },
+        featureImportance
+      );
+
+      // Format feature importance for response
+      const formattedFeatures = featureImportance.scores.map(score => ({
+        feature: score.feature,
+        displayName: getFeatureDisplayName(score.feature),
+        importance: parseFloat(score.importance.toFixed(4)),
+        importancePercent: parseFloat((score.importance * 100).toFixed(2)),
+        contribution: parseFloat(score.contribution.toFixed(2)),
+        value: patientData[score.feature]
+      }));
+
+      // Log explanation request (without patient data)
+      console.log(`[EXPLANATION] Risk: ${riskLevel}, Top feature: ${formattedFeatures[0]?.displayName}`);
+
+      // Return explanation
       res.json({
         success: true,
         prediction: {
@@ -287,15 +442,20 @@ function createApp() {
           riskCategory,
           threshold: 0.5
         },
+        explanation: {
+          summary: explanation,
+          topFeatures: formattedFeatures.slice(0, 5), // Top 5 features
+          allFeatures: formattedFeatures
+        },
         metadata: {
           modelVersion: modelMetadata?.version || 'unknown',
           timestamp: new Date().toISOString()
         },
-        disclaimer: 'This prediction is for research purposes only and should not be used for clinical decision-making.'
+        disclaimer: 'This explanation is for research and educational purposes only. Clinical decisions should be made by qualified healthcare professionals.'
       });
 
     } catch (error) {
-      console.error('[PREDICTION ERROR]', error.message);
+      console.error('[EXPLANATION ERROR]', error.message);
       next(error);
     }
   });
